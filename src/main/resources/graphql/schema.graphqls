@@ -1,0 +1,25 @@
+type Query {
+    getUserByPropertyName(propertyName: String!,value: String!): [User]
+}
+
+input CreateUserDto {
+    name: String!
+    contact: String!
+    email: String!
+    age: Int
+    gender: Boolean
+    password: String!
+}
+
+type Mutation {
+  createUser(userDto: CreateUserDto): User
+}
+
+type User {
+    id: ID
+    name: String
+    contact: String
+    email: String
+    age: Int
+    gender: Boolean
+}
