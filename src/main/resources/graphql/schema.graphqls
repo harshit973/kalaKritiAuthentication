@@ -7,12 +7,21 @@ input CreateUserDto {
     contact: String!
     email: String!
     age: Int
-    gender: Boolean
+    gender: Boolean!
     password: String!
+}
+input UpdateUserDto {
+    name: String
+    contact: String
+    email: String
+    age: Int
+    gender: Boolean
+    password: String
 }
 
 type Mutation {
   createUser(userDto: CreateUserDto): User
+  updateUser(id:ID!,userDto: UpdateUserDto!): User
 }
 
 type User {

@@ -14,12 +14,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -46,26 +46,16 @@ public class UserServiceImpl implements UserService {
     JwtComponent jwtComponent;
 
     private Query convertQueryToSql(final String sql, final String property, final String value) throws Exception {
-        final Query query;
-        switch (property.toLowerCase()) {
-            case "id":
-                query = entityManager.createNativeQuery(sql, User.class).setParameter("value", Long.parseLong(value));
-                break;
-            case "name":
-            case "email":
-            case "contact":
-                query = entityManager.createNativeQuery(sql, User.class).setParameter("value", value);
-                break;
-            case "gender":
-                query = entityManager.createNativeQuery(sql, User.class).setParameter("value", Boolean.getBoolean(value));
-                break;
-            case "age":
-                query = entityManager.createNativeQuery(sql, User.class).setParameter("value", Integer.parseInt(value));
-                break;
-            default:
-                throw new Exception("Invalid property");
-        }
-        return query;
+        return switch (property.toLowerCase()) {
+            case "id" -> entityManager.createNativeQuery(sql, User.class).setParameter("value", Long.parseLong(value));
+            case "name", "email", "contact" ->
+                    entityManager.createNativeQuery(sql, User.class).setParameter("value", value);
+            case "gender" ->
+                    entityManager.createNativeQuery(sql, User.class).setParameter("value", Boolean.getBoolean(value));
+            case "age" ->
+                    entityManager.createNativeQuery(sql, User.class).setParameter("value", Integer.parseInt(value));
+            default -> throw new Exception("Invalid property");
+        };
     }
 
     @Override
@@ -90,7 +80,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public String login(String email, String password, HttpServletResponse response) throws Exception {
         Optional<User> user = this.getUsersByPropertyName("email", email).stream().findFirst();
-        if (user.isEmpty()) {
+        if (user.isEmpty() || Boolean.TRUE.equals(user.get().getDeleted())) {
             throw new NotFoundException("email not found");
         }
         final AtomicReference<String> jwt = new AtomicReference<>();
@@ -102,6 +92,55 @@ public class UserServiceImpl implements UserService {
         }
         return jwt.get();
     }
+    private User toUserDto(final UserDto source, final User target) {
+        target.setAge(source.getAge());
+        if(Objects.nonNull(source.getGender())){
+            target.setGender(source.getGender());
+        }
+        if(Objects.nonNull(source.getEmail())){
+            target.setEmail(source.getEmail());
+        }
+        if(Objects.nonNull(source.getName())){
+            target.setName(source.getName());
+        }
+        if(Objects.nonNull(source.getContact())){
+            target.setContact(source.getContact());
+        }
+        if(Objects.nonNull(source.getPassword())){
+            target.setPassword(this.authService.hashPassword(source.getPassword()));
+        }
+        return target;
+    }
+    @Override
+    public User updateUser(final Long id,final UserDto userDto) {
+        if(Objects.isNull(id)){
+            throw new NotFoundException("User to update not found");
+        }
+        if(Objects.isNull(userDto)){
+            throw new NotFoundException("User payload to update not found");
+        }
+        Optional<User> userOptional = this.userRepository.findById(id);
+        final AtomicReference<User> userAtomicReference = new AtomicReference<>(null);
+        userOptional.ifPresent(user -> {
+            if(Boolean.FALSE.equals(user.getDeleted())){
+                userAtomicReference.set(this.userRepository.save(this.toUserDto(userDto,user)));
+            }
+        });
+        if(Objects.isNull(userAtomicReference.get())){
+            throw new NotFoundException("User to update not found");
+        }
+        return userAtomicReference.get();
+    }
 
+    public Boolean deleteUser(final Long id) {
+        Optional<User> userOptional = this.userRepository.findById(id);
+        if(userOptional.isEmpty()){
+            return false;
+        }
+        User user = userOptional.get();
+        user.setDeleted(Boolean.TRUE);
+        this.userRepository.save(user);
+        return true;
+    }
 
 }

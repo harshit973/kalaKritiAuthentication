@@ -2,11 +2,7 @@ package com.example.authentication.controller;
 
 import com.example.authentication.dto.UserDto;
 import com.example.authentication.entity.User;
-import com.example.authentication.repository.UserRepository;
-import com.example.authentication.service.AuthService;
 import com.example.authentication.service.UserService;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -15,14 +11,10 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 @Controller
 @RequestMapping("/auth")
@@ -51,4 +43,15 @@ public class UserController {
     public User createUser(@Argument UserDto userDto) {
         return this.userService.createUser(userDto);
     }
+    @MutationMapping
+    public User updateUser(@Argument Long id,@Argument UserDto userDto) {
+        return this.userService.updateUser(id,userDto);
+    }
+
+    @DeleteMapping("/user/{id}")
+    public ResponseEntity<Boolean> deleteUser(@PathVariable Long id) {
+        return new ResponseEntity<>(this.userService.deleteUser(id),HttpStatus.ACCEPTED);
+    }
+
+
 }
